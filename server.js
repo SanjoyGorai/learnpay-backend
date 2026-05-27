@@ -12,7 +12,12 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI;
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || "learnpay_default_secret_for_testing";
+
+if (!MONGODB_URI) {
+  console.error("MONGODB_URI is missing. Add it in Render Environment Variables.");
+  process.exit(1);
+}
 
 mongoose
   .connect(MONGODB_URI)
@@ -20,36 +25,34 @@ mongoose
     console.log("MongoDB connected successfully");
   })
   .catch((error) => {
-    console.log("MongoDB connection failed:", error.message);
+    console.error("MongoDB connection failed:", error.message);
+    process.exit(1);
   });
 
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true,
+      required: true
     },
-
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
-      trim: true,
+      trim: true
     },
-
     phone: {
       type: String,
-      default: null,
+      default: null
     },
-
     password: {
       type: String,
-      required: true,
-    },
+      required: true
+    }
   },
   {
-    timestamps: true,
+    timestamps: true
   }
 );
 
@@ -58,11 +61,11 @@ const User = mongoose.model("User", userSchema);
 function createToken(userId) {
   return jwt.sign(
     {
-      userId: userId,
+      userId: userId
     },
     JWT_SECRET,
     {
-      expiresIn: "7d",
+      expiresIn: "7d"
     }
   );
 }
@@ -77,23 +80,23 @@ app.post("/api/register", async (req, res) => {
 
     if (!name || !email || !password) {
       return res.status(400).json({
-        message: "Name, email and password are required",
+        message: "Name, email and password are required"
       });
     }
 
     if (password.length < 6) {
       return res.status(400).json({
-        message: "Password must be at least 6 characters",
+        message: "Password must be at least 6 characters"
       });
     }
 
     const existingUser = await User.findOne({
-      email: email.toLowerCase().trim(),
+      email: email.toLowerCase().trim()
     });
 
     if (existingUser) {
       return res.status(400).json({
-        message: "User already exists",
+        message: "User already exists"
       });
     }
 
@@ -103,7 +106,7 @@ app.post("/api/register", async (req, res) => {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       phone: phone || null,
-      password: hashedPassword,
+      password: hashedPassword
     });
 
     const token = createToken(newUser._id.toString());
@@ -114,13 +117,13 @@ app.post("/api/register", async (req, res) => {
         id: newUser._id.toString(),
         name: newUser.name,
         email: newUser.email,
-        phone: newUser.phone,
-      },
+        phone: newUser.phone
+      }
     });
   } catch (error) {
     return res.status(500).json({
       message: "Registration failed",
-      error: error.message,
+      error: error.message
     });
   }
 });
@@ -131,17 +134,17 @@ app.post("/api/login", async (req, res) => {
 
     if (!email || !password) {
       return res.status(400).json({
-        message: "Email and password are required",
+        message: "Email and password are required"
       });
     }
 
     const user = await User.findOne({
-      email: email.toLowerCase().trim(),
+      email: email.toLowerCase().trim()
     });
 
     if (!user) {
       return res.status(401).json({
-        message: "Invalid email or password",
+        message: "Invalid email or password"
       });
     }
 
@@ -149,7 +152,7 @@ app.post("/api/login", async (req, res) => {
 
     if (!isPasswordCorrect) {
       return res.status(401).json({
-        message: "Invalid email or password",
+        message: "Invalid email or password"
       });
     }
 
@@ -161,19 +164,16 @@ app.post("/api/login", async (req, res) => {
         id: user._id.toString(),
         name: user.name,
         email: user.email,
-        phone: user.phone,
-      },
+        phone: user.phone
+      }
     });
   } catch (error) {
     return res.status(500).json({
       message: "Login failed",
-      error: error.message,
+      error: error.message
     });
   }
 });
-
-
-const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`LearnPay backend running on port ${PORT}`);
